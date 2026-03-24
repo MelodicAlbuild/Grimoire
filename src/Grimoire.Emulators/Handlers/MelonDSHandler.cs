@@ -43,7 +43,7 @@ public class MelonDSHandler : IEmulatorHandler
     public Task InstallAsync(string downloadedArchivePath, string installDirectory,
         IProgress<double> progress, CancellationToken ct = default)
     {
-        throw new NotImplementedException("melonDS installation not yet implemented");
+        return ArchiveInstaller.ExtractZipAsync(downloadedArchivePath, installDirectory, progress, ct);
     }
 
     public ProcessStartInfo BuildLaunchArgs(string emulatorPath, string romPath, LaunchOptions options)

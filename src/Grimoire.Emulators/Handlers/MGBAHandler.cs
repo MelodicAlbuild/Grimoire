@@ -6,11 +6,11 @@ using Grimoire.Shared.Models;
 
 namespace Grimoire.Emulators.Handlers;
 
-public class CitraHandler : IEmulatorHandler
+public class MGBAHandler : IEmulatorHandler
 {
-    public string EmulatorName => "Citra";
-    public PlatformType Platform => PlatformType.Nintendo3DS;
-    public string[] SupportedFileExtensions => [".3ds", ".cci", ".cxi", ".cia"];
+    public string EmulatorName => "mGBA";
+    public PlatformType Platform => PlatformType.GameBoy;
+    public string[] SupportedFileExtensions => [".gb", ".gbc", ".gba"];
 
     public Task<string?> FindInstalledPathAsync(CancellationToken ct = default)
     {
@@ -35,9 +35,8 @@ public class CitraHandler : IEmulatorHandler
 
     public Task<string> GetDownloadUrlAsync(CancellationToken ct = default)
     {
-        // TODO: Query PabloMK7/citra GitHub Releases API
-        // https://api.github.com/repos/PabloMK7/citra/releases/latest
-        throw new NotImplementedException("Citra download URL resolution not yet implemented");
+        // Served from Grimoire server, not GitHub
+        throw new NotSupportedException("Emulator binaries are served from the Grimoire server.");
     }
 
     public Task InstallAsync(string downloadedArchivePath, string installDirectory,
@@ -48,7 +47,7 @@ public class CitraHandler : IEmulatorHandler
 
     public ProcessStartInfo BuildLaunchArgs(string emulatorPath, string romPath, LaunchOptions options)
     {
-        var args = $"-g \"{romPath}\"";
+        var args = $"\"{romPath}\"";
         if (options.Fullscreen)
             args += " -f";
         if (!string.IsNullOrWhiteSpace(options.CustomArgs))
@@ -64,33 +63,23 @@ public class CitraHandler : IEmulatorHandler
 
     public string GetSaveDirectory(string emulatorBasePath, string gameId)
     {
-        // Citra stores saves in its sdmc directory under the title structure
-        var baseDir = Path.GetDirectoryName(emulatorBasePath)!;
-        return Path.Combine(baseDir, "sdmc", "Nintendo 3DS", "00000000000000000000000000000000",
-            "00000000000000000000000000000000", "title", gameId);
+        // mGBA stores saves next to the ROM by default, but we organize them
+        return Path.Combine(Path.GetDirectoryName(emulatorBasePath)!, "saves", gameId);
     }
 
+    // Game Boy has no DLC/update/firmware management
     public Task InstallDlcAsync(string emulatorPath, string dlcFilePath, CancellationToken ct = default)
-    {
-        // TODO: Place CIA DLC files in Citra's install directory
-        throw new NotImplementedException("Citra DLC installation not yet implemented");
-    }
+        => Task.CompletedTask;
 
     public Task InstallUpdateAsync(string emulatorPath, string updateFilePath, CancellationToken ct = default)
-    {
-        // TODO: Place update CIA in Citra's install directory
-        throw new NotImplementedException("Citra update installation not yet implemented");
-    }
+        => Task.CompletedTask;
 
     public Task InstallFirmwareAsync(string emulatorPath, string firmwarePath, CancellationToken ct = default)
-    {
-        // Citra doesn't require separate firmware
-        return Task.CompletedTask;
-    }
+        => Task.CompletedTask;
 
     public Task ValidateRequirementsAsync(string emulatorPath, CancellationToken ct = default)
     {
-        // Citra has no mandatory external BIOS/firmware requirements
+        // mGBA has optional BIOS (gba_bios.bin) but runs without it
         return Task.CompletedTask;
     }
 
@@ -98,19 +87,20 @@ public class CitraHandler : IEmulatorHandler
     {
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
+            var programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
             var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             return [
-                Path.Combine(localAppData, "citra-emu", "citra-qt.exe"),
-                Path.Combine(localAppData, "Citra", "citra-qt.exe"),
+                Path.Combine(programFiles, "mGBA", "mGBA.exe"),
+                Path.Combine(localAppData, "mGBA", "mGBA.exe"),
             ];
         }
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
         {
-            return ["/usr/bin/citra-qt", "/usr/local/bin/citra-qt"];
+            return ["/usr/bin/mgba-qt", "/usr/local/bin/mgba-qt", "/usr/bin/mgba"];
         }
         if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
         {
-            return ["/Applications/Citra.app/Contents/MacOS/citra-qt"];
+            return ["/Applications/mGBA.app/Contents/MacOS/mGBA"];
         }
         return [];
     }

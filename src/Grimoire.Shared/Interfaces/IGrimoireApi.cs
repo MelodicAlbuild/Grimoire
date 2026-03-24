@@ -22,6 +22,14 @@ public interface IGrimoireApi
 
     Task<EmulatorDto?> GetEmulatorAsync(PlatformType platform, CancellationToken ct = default);
 
+    /// <summary>Downloads an emulator binary for the given platform and runtime (e.g., win-x64).</summary>
+    Task<Stream> GetEmulatorDownloadStreamAsync(PlatformType platform, string runtimeId,
+        CancellationToken ct = default);
+
+    /// <summary>Gets the file size of an emulator binary.</summary>
+    Task<long> GetEmulatorDownloadSizeAsync(PlatformType platform, string runtimeId,
+        CancellationToken ct = default);
+
     // -- Platforms --
 
     Task<IReadOnlyList<PlatformInfoDto>> GetPlatformsAsync(CancellationToken ct = default);

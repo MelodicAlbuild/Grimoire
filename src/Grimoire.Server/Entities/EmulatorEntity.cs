@@ -10,4 +10,6 @@ public class EmulatorEntity
     public required string Version { get; set; }
     public string? DownloadUrl { get; set; }
     public required string ExecutableName { get; set; }
+
+    public List<EmulatorBinaryEntity> Binaries { get; set; } = [];
 }

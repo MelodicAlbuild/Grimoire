@@ -73,6 +73,7 @@ public class ModelTests
     [InlineData(PlatformType.NintendoSwitch)]
     [InlineData(PlatformType.NintendoDS)]
     [InlineData(PlatformType.Nintendo3DS)]
+    [InlineData(PlatformType.GameBoy)]
     public void PlatformType_Enum_HasExpectedValues(PlatformType platform)
     {
         Assert.True(Enum.IsDefined(platform));
@@ -81,7 +82,7 @@ public class ModelTests
     [Fact]
     public void PlatformType_Enum_HasThreeValues()
     {
-        Assert.Equal(3, Enum.GetValues<PlatformType>().Length);
+        Assert.Equal(4, Enum.GetValues<PlatformType>().Length);
     }
 
     [Fact]

@@ -40,6 +40,25 @@ public class GrimoireApiClient : IGrimoireApi
         return await _http.GetFromJsonAsync<EmulatorDto>($"/api/emulators/{platform}", ct);
     }
 
+    public async Task<Stream> GetEmulatorDownloadStreamAsync(
+        PlatformType platform, string runtimeId, CancellationToken ct = default)
+    {
+        var response = await _http.SendAsync(
+            new HttpRequestMessage(HttpMethod.Get, $"/api/emulators/{platform}/download/{runtimeId}"),
+            HttpCompletionOption.ResponseHeadersRead, ct);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadAsStreamAsync(ct);
+    }
+
+    public async Task<long> GetEmulatorDownloadSizeAsync(
+        PlatformType platform, string runtimeId, CancellationToken ct = default)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Head, $"/api/emulators/{platform}/download/{runtimeId}");
+        var response = await _http.SendAsync(request, ct);
+        response.EnsureSuccessStatusCode();
+        return response.Content.Headers.ContentLength ?? 0;
+    }
+
     public async Task<IReadOnlyList<PlatformInfoDto>> GetPlatformsAsync(CancellationToken ct = default)
     {
         return await _http.GetFromJsonAsync<IReadOnlyList<PlatformInfoDto>>("/api/platforms", ct) ?? [];

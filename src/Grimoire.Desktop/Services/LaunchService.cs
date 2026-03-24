@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using System.IO.Compression;
+using System.Runtime.InteropServices;
 using Grimoire.Desktop.Data;
 using Grimoire.Shared.DTOs;
 using Grimoire.Shared.Enums;
@@ -66,16 +68,13 @@ public class LaunchService : ILaunchService
             if (handler is null)
                 throw new NotSupportedException($"No emulator handler for platform: {game.Platform}");
 
-            // 2. Check emulator
+            // 2. Check emulator — install if missing
             progress.Report(new LaunchProgress(LaunchStep.CheckingEmulator, $"Checking {handler.EmulatorName}..."));
             var emulatorPath = await handler.FindInstalledPathAsync(ct);
 
             if (emulatorPath is null)
             {
-                progress.Report(new LaunchProgress(LaunchStep.DownloadingEmulator,
-                    $"{handler.EmulatorName} not found. Automatic installation not yet implemented."));
-                throw new InvalidOperationException(
-                    $"{handler.EmulatorName} is not installed. Please install it manually and try again.");
+                emulatorPath = await DownloadAndInstallEmulatorAsync(handler, game.Platform, progress, ct);
             }
 
             // 3. Check if game is downloaded locally
@@ -146,6 +145,60 @@ public class LaunchService : ILaunchService
             progress.Report(new LaunchProgress(LaunchStep.Failed, ex.Message));
             throw;
         }
+    }
+
+    private async Task<string> DownloadAndInstallEmulatorAsync(
+        IEmulatorHandler handler, PlatformType platform,
+        IProgress<LaunchProgress> progress, CancellationToken ct)
+    {
+        var rid = GetCurrentRuntimeId();
+        progress.Report(new LaunchProgress(LaunchStep.DownloadingEmulator,
+            $"Downloading {handler.EmulatorName} for {rid}..."));
+
+        var installDir = await _settings.GetInstallDirectoryAsync();
+        var emuDir = Path.Combine(installDir, "emulators", handler.EmulatorName.ToLower());
+        var archivePath = Path.Combine(installDir, "temp", $"{handler.EmulatorName}-{rid}.zip");
+
+        Directory.CreateDirectory(Path.GetDirectoryName(archivePath)!);
+        Directory.CreateDirectory(emuDir);
+
+        // Download from server
+        await using var stream = await _api.GetEmulatorDownloadStreamAsync(platform, rid, ct);
+        await using var fileStream = new FileStream(archivePath, FileMode.Create, FileAccess.Write);
+        await stream.CopyToAsync(fileStream, ct);
+        fileStream.Close();
+
+        // Install (extract)
+        progress.Report(new LaunchProgress(LaunchStep.InstallingEmulator,
+            $"Installing {handler.EmulatorName}..."));
+        await handler.InstallAsync(archivePath, emuDir, new Progress<double>(), ct);
+
+        // Clean up archive
+        try { File.Delete(archivePath); } catch { }
+
+        // Track in local DB
+        var emulatorPath = await handler.FindInstalledPathAsync(ct);
+        if (emulatorPath is not null)
+        {
+            _db.InstalledEmulators.Add(new InstalledEmulator
+            {
+                Name = handler.EmulatorName,
+                Platform = platform,
+                InstallPath = emulatorPath,
+            });
+            await _db.SaveChangesAsync(ct);
+        }
+
+        return emulatorPath
+            ?? throw new InvalidOperationException($"Failed to locate {handler.EmulatorName} after installation.");
+    }
+
+    private static string GetCurrentRuntimeId()
+    {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) return "win-x64";
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) return "linux-x64";
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) return "osx-arm64";
+        return "unknown";
     }
 
     private static string SanitizeFileName(string name)

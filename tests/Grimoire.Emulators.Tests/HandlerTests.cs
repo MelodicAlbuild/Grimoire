@@ -9,17 +9,18 @@ public class HandlerRegistryTests
 {
     private static EmulatorHandlerRegistry CreateRegistry()
     {
-        IEmulatorHandler[] handlers = [new RyubingHandler(), new MelonDSHandler(), new CitraHandler()];
+        IEmulatorHandler[] handlers = [new RyubingHandler(), new MelonDSHandler(), new CitraHandler(), new MGBAHandler()];
         return new EmulatorHandlerRegistry(handlers);
     }
 
     [Fact]
-    public void Registry_SupportedPlatforms_ContainsAllThree()
+    public void Registry_SupportedPlatforms_ContainsAllFour()
     {
         var registry = CreateRegistry();
         Assert.Contains(PlatformType.NintendoSwitch, registry.SupportedPlatforms);
         Assert.Contains(PlatformType.NintendoDS, registry.SupportedPlatforms);
         Assert.Contains(PlatformType.Nintendo3DS, registry.SupportedPlatforms);
+        Assert.Contains(PlatformType.GameBoy, registry.SupportedPlatforms);
     }
 
     [Fact]
@@ -40,10 +41,18 @@ public class HandlerRegistryTests
     }
 
     [Fact]
-    public void Registry_AllHandlers_ReturnsThree()
+    public void Registry_AllHandlers_ReturnsFour()
     {
         var registry = CreateRegistry();
-        Assert.Equal(3, registry.AllHandlers.Count);
+        Assert.Equal(4, registry.AllHandlers.Count);
+    }
+
+    [Fact]
+    public void Registry_GetHandler_ReturnsGameBoy()
+    {
+        var registry = CreateRegistry();
+        var handler = registry.GetHandler(PlatformType.GameBoy);
+        Assert.Equal("mGBA", handler.EmulatorName);
     }
 }
 
@@ -200,6 +209,78 @@ public class CitraHandlerTests
     {
         // Citra has no mandatory BIOS requirements
         await _handler.ValidateRequirementsAsync("/nonexistent/path");
+    }
+
+    [Fact]
+    public async Task InstallFirmware_IsNoOp()
+    {
+        await _handler.InstallFirmwareAsync("/path", "/fw", CancellationToken.None);
+    }
+}
+
+public class MGBAHandlerTests
+{
+    private readonly MGBAHandler _handler = new();
+
+    [Fact]
+    public void EmulatorName_IsMGBA()
+    {
+        Assert.Equal("mGBA", _handler.EmulatorName);
+    }
+
+    [Fact]
+    public void Platform_IsGameBoy()
+    {
+        Assert.Equal(PlatformType.GameBoy, _handler.Platform);
+    }
+
+    [Fact]
+    public void SupportedExtensions_IncludesGbGbcGba()
+    {
+        Assert.Contains(".gb", _handler.SupportedFileExtensions);
+        Assert.Contains(".gbc", _handler.SupportedFileExtensions);
+        Assert.Contains(".gba", _handler.SupportedFileExtensions);
+    }
+
+    [Fact]
+    public void BuildLaunchArgs_IncludesFullscreen()
+    {
+        var psi = _handler.BuildLaunchArgs("/path/to/mGBA", "/games/pokemon.gba", new LaunchOptions());
+        Assert.Contains("-f", psi.Arguments);
+        Assert.Contains("pokemon.gba", psi.Arguments);
+    }
+
+    [Fact]
+    public void BuildLaunchArgs_NoFullscreen_WhenDisabled()
+    {
+        var psi = _handler.BuildLaunchArgs("/path/to/mGBA", "/games/pokemon.gba", new LaunchOptions(Fullscreen: false));
+        Assert.DoesNotContain("-f", psi.Arguments);
+    }
+
+    [Fact]
+    public void GetSaveDirectory_ContainsSaves()
+    {
+        var saveDir = _handler.GetSaveDirectory("/apps/mgba/mGBA.exe", "pokemon_emerald");
+        Assert.Contains("saves", saveDir);
+        Assert.Contains("pokemon_emerald", saveDir);
+    }
+
+    [Fact]
+    public async Task ValidateRequirements_DoesNotThrow()
+    {
+        await _handler.ValidateRequirementsAsync("/nonexistent/path");
+    }
+
+    [Fact]
+    public async Task InstallDlc_IsNoOp()
+    {
+        await _handler.InstallDlcAsync("/path", "/dlc", CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task InstallUpdate_IsNoOp()
+    {
+        await _handler.InstallUpdateAsync("/path", "/update", CancellationToken.None);
     }
 
     [Fact]

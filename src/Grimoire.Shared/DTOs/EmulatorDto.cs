@@ -7,5 +7,12 @@ public record EmulatorDto(
     string Name,
     PlatformType Platform,
     string Version,
-    string ExecutableName
+    string ExecutableName,
+    IReadOnlyList<EmulatorBinaryDto> Binaries
+);
+
+public record EmulatorBinaryDto(
+    int Id,
+    string RuntimeId,
+    long FileSize
 );

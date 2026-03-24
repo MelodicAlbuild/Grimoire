@@ -15,6 +15,7 @@ public class GrimoireDbContext : DbContext
     public DbSet<DlcEntity> Dlcs => Set<DlcEntity>();
     public DbSet<UpdateEntity> Updates => Set<UpdateEntity>();
     public DbSet<FirmwareEntity> Firmwares => Set<FirmwareEntity>();
+    public DbSet<EmulatorBinaryEntity> EmulatorBinaries => Set<EmulatorBinaryEntity>();
     public DbSet<BiosEntity> BiosFiles => Set<BiosEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -35,6 +36,15 @@ public class GrimoireDbContext : DbContext
             entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
             entity.Property(e => e.Platform).HasConversion<string>();
             entity.HasIndex(e => e.Platform).IsUnique();
+        });
+
+        modelBuilder.Entity<EmulatorBinaryEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.RuntimeId).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.FilePath).IsRequired();
+            entity.HasOne(e => e.Emulator).WithMany(e => e.Binaries).HasForeignKey(e => e.EmulatorId);
+            entity.HasIndex(e => new { e.EmulatorId, e.RuntimeId }).IsUnique();
         });
 
         modelBuilder.Entity<DlcEntity>(entity =>

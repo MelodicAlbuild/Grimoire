@@ -45,8 +45,7 @@ public class RyubingHandler : IEmulatorHandler
     public Task InstallAsync(string downloadedArchivePath, string installDirectory,
         IProgress<double> progress, CancellationToken ct = default)
     {
-        // TODO: Extract ZIP/tar.gz to installDirectory, report progress
-        throw new NotImplementedException("Ryubing installation not yet implemented");
+        return ArchiveInstaller.ExtractZipAsync(downloadedArchivePath, installDirectory, progress, ct);
     }
 
     public ProcessStartInfo BuildLaunchArgs(string emulatorPath, string romPath, LaunchOptions options)

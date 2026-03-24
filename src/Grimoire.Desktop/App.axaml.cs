@@ -105,6 +105,7 @@ public class App : Application
         services.AddSingleton<IEmulatorHandler, RyubingHandler>();
         services.AddSingleton<IEmulatorHandler, MelonDSHandler>();
         services.AddSingleton<IEmulatorHandler, CitraHandler>();
+        services.AddSingleton<IEmulatorHandler, MGBAHandler>();
         services.AddSingleton<EmulatorHandlerRegistry>();
 
         // Core services

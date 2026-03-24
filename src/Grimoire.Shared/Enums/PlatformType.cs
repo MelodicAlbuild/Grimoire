@@ -4,5 +4,6 @@ public enum PlatformType
 {
     NintendoSwitch,
     NintendoDS,
-    Nintendo3DS
+    Nintendo3DS,
+    GameBoy
 }

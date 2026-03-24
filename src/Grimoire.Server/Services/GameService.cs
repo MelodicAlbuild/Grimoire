@@ -80,21 +80,28 @@ public class GameService : IGameService
         PlatformType.NintendoSwitch => "Nintendo Switch",
         PlatformType.NintendoDS => "Nintendo DS",
         PlatformType.Nintendo3DS => "Nintendo 3DS",
+        PlatformType.GameBoy => "Game Boy",
         _ => platform.ToString()
     };
 
     public async Task<IReadOnlyList<EmulatorDto>> GetEmulatorsAsync()
     {
         return await _db.Emulators
-            .Select(e => new EmulatorDto(e.Id, e.Name, e.Platform, e.Version, e.ExecutableName))
+            .Include(e => e.Binaries)
+            .Select(e => new EmulatorDto(
+                e.Id, e.Name, e.Platform, e.Version, e.ExecutableName,
+                e.Binaries.Select(b => new EmulatorBinaryDto(b.Id, b.RuntimeId, b.FileSize)).ToList()))
             .ToListAsync();
     }
 
     public async Task<EmulatorDto?> GetEmulatorByPlatformAsync(PlatformType platform)
     {
-        var emu = await _db.Emulators.FirstOrDefaultAsync(e => e.Platform == platform);
+        var emu = await _db.Emulators
+            .Include(e => e.Binaries)
+            .FirstOrDefaultAsync(e => e.Platform == platform);
         if (emu is null) return null;
-        return new EmulatorDto(emu.Id, emu.Name, emu.Platform, emu.Version, emu.ExecutableName);
+        return new EmulatorDto(emu.Id, emu.Name, emu.Platform, emu.Version, emu.ExecutableName,
+            emu.Binaries.Select(b => new EmulatorBinaryDto(b.Id, b.RuntimeId, b.FileSize)).ToList());
     }
 
     public async Task<int> GetGameCountAsync()

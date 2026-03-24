@@ -27,6 +27,9 @@ public class LibraryScanService : BackgroundService
         [".cci"] = PlatformType.Nintendo3DS,
         [".cxi"] = PlatformType.Nintendo3DS,
         [".cia"] = PlatformType.Nintendo3DS,
+        [".gb"] = PlatformType.GameBoy,
+        [".gbc"] = PlatformType.GameBoy,
+        [".gba"] = PlatformType.GameBoy,
     };
 
     public LibraryScanService(IServiceProvider services, ILogger<LibraryScanService> logger,

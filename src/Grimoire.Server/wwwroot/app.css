@@ -216,6 +216,11 @@ h1, h2, h3, h4, h5, h6 {
     color: var(--frost);
     border-color: rgba(92, 172, 206, 0.3);
 }
+.platform-gb {
+    background: rgba(155, 89, 182, 0.15);
+    color: #bb8fce;
+    border-color: rgba(155, 89, 182, 0.3);
+}
 .badge-dlc {
     background: rgba(212, 175, 55, 0.12);
     color: var(--gold);
