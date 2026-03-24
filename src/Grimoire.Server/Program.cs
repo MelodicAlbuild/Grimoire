@@ -71,12 +71,11 @@ try
 
     var app = builder.Build();
 
-    // Apply pending migrations and seed data on startup
+    // Apply pending migrations on startup
     using (var scope = app.Services.CreateScope())
     {
         var db = scope.ServiceProvider.GetRequiredService<GrimoireDbContext>();
         await db.Database.MigrateAsync();
-        await SeedDataService.SeedAsync(db);
     }
 
     // Serilog request logging (replaces default Microsoft request logging)
