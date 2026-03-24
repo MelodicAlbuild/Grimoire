@@ -91,16 +91,14 @@ public class App : Application
         })
         .AddStandardResilienceHandler(options =>
         {
-            // Retry up to 3 times with exponential backoff for transient failures
             options.Retry.MaxRetryAttempts = 3;
             options.Retry.BackoffType = Polly.DelayBackoffType.Exponential;
             options.Retry.UseJitter = true;
 
-            // 5-minute total timeout for large downloads
-            options.TotalRequestTimeout.Timeout = TimeSpan.FromMinutes(5);
-
-            // Per-attempt timeout of 2 minutes
-            options.AttemptTimeout.Timeout = TimeSpan.FromMinutes(2);
+            // Attempt timeout must be less than half the circuit breaker sampling duration
+            options.AttemptTimeout.Timeout = TimeSpan.FromSeconds(10);
+            options.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(30);
+            options.TotalRequestTimeout.Timeout = TimeSpan.FromMinutes(2);
         });
 
         // Emulator handlers
