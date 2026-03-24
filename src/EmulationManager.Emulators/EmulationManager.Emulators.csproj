@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>EmulationManager.Emulators</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\EmulationManager.Shared\EmulationManager.Shared.csproj" />
+  </ItemGroup>
+
+</Project>

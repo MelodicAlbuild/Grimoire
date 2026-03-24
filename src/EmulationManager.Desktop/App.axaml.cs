@@ -1,0 +1,89 @@
+using Avalonia;
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Markup.Xaml;
+using EmulationManager.Desktop.Data;
+using EmulationManager.Desktop.Services;
+using EmulationManager.Desktop.ViewModels;
+using EmulationManager.Desktop.Views;
+using EmulationManager.Emulators;
+using EmulationManager.Emulators.Handlers;
+using EmulationManager.Shared.ApiClient;
+using EmulationManager.Shared.Interfaces;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace EmulationManager.Desktop;
+
+public class App : Application
+{
+    public static IServiceProvider Services { get; private set; } = null!;
+
+    public override void Initialize()
+    {
+        AvaloniaXamlLoader.Load(this);
+    }
+
+    public override void OnFrameworkInitializationCompleted()
+    {
+        var services = new ServiceCollection();
+        ConfigureServices(services);
+        Services = services.BuildServiceProvider();
+
+        // Ensure local database exists
+        using (var scope = Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<LocalDbContext>();
+            db.Database.EnsureCreated();
+        }
+
+        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        {
+            desktop.MainWindow = new MainWindow
+            {
+                DataContext = Services.GetRequiredService<MainWindowViewModel>()
+            };
+        }
+
+        base.OnFrameworkInitializationCompleted();
+    }
+
+    private static void ConfigureServices(IServiceCollection services)
+    {
+        // Local database
+        var dbPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "EmulationManager", "local.db");
+        Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
+
+        services.AddDbContext<LocalDbContext>(options =>
+            options.UseSqlite($"Data Source={dbPath}"));
+
+        // Settings
+        services.AddScoped<ISettingsService, SettingsService>();
+
+        // API Client
+        services.AddHttpClient<IEmulationManagerApi, EmulationManagerApiClient>(client =>
+        {
+            client.BaseAddress = new Uri("http://localhost:5038");
+            client.Timeout = TimeSpan.FromMinutes(30);
+        });
+
+        // Emulator handlers
+        services.AddSingleton<IEmulatorHandler, RyubingHandler>();
+        services.AddSingleton<IEmulatorHandler, MelonDSHandler>();
+        services.AddSingleton<IEmulatorHandler, CitraHandler>();
+        services.AddSingleton<EmulatorHandlerRegistry>();
+
+        // Core services
+        services.AddSingleton<IProtocolHandler, ProtocolHandler>();
+        services.AddSingleton<IEmulatorManager, EmulatorManager>();
+        services.AddSingleton<IDownloadManager, DownloadManager>();
+        services.AddScoped<ILaunchService, LaunchService>();
+
+        // ViewModels
+        services.AddTransient<MainWindowViewModel>();
+        services.AddTransient<GameLibraryViewModel>();
+        services.AddTransient<DownloadsViewModel>();
+        services.AddTransient<SettingsViewModel>();
+    }
+}

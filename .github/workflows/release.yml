@@ -1,0 +1,84 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  build-desktop:
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            rid: win-x64
+            artifact: EmulationManager-win-x64
+          - os: macos-latest
+            rid: osx-arm64
+            artifact: EmulationManager-osx-arm64
+          - os: ubuntu-latest
+            rid: linux-x64
+            artifact: EmulationManager-linux-x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      - name: Publish Desktop Client
+        run: >
+          dotnet publish src/EmulationManager.Desktop/EmulationManager.Desktop.csproj
+          -c Release -r ${{ matrix.rid }} --self-contained true
+          /p:PublishSingleFile=true
+          /p:IncludeNativeLibrariesForSelfExtract=true
+          -o publish/${{ matrix.artifact }}
+      - name: Zip artifact
+        shell: bash
+        run: |
+          cd publish
+          if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+            7z a ../${{ matrix.artifact }}.zip ${{ matrix.artifact }}/
+          else
+            zip -r ../${{ matrix.artifact }}.zip ${{ matrix.artifact }}/
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.artifact }}.zip
+
+  build-server:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      - name: Publish Server
+        run: >
+          dotnet publish src/EmulationManager.Server/EmulationManager.Server.csproj
+          -c Release -o publish/EmulationManager-Server
+      - name: Zip artifact
+        run: cd publish && zip -r ../EmulationManager-Server.zip EmulationManager-Server/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: EmulationManager-Server
+          path: EmulationManager-Server.zip
+
+  create-release:
+    needs: [build-desktop, build-server]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            EmulationManager-win-x64.zip
+            EmulationManager-osx-arm64.zip
+            EmulationManager-linux-x64.zip
+            EmulationManager-Server.zip
+          generate_release_notes: true

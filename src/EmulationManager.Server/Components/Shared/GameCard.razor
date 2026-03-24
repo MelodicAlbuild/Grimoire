@@ -1,0 +1,51 @@
+@{
+    var platformClass = Game.Platform switch
+    {
+        PlatformType.NintendoSwitch => "platform-switch",
+        PlatformType.NintendoDS => "platform-ds",
+        PlatformType.Nintendo3DS => "platform-3ds",
+        _ => ""
+    };
+
+    var platformLabel = Game.Platform switch
+    {
+        PlatformType.NintendoSwitch => "Switch",
+        PlatformType.NintendoDS => "DS",
+        PlatformType.Nintendo3DS => "3DS",
+        _ => Game.Platform.ToString()
+    };
+}
+
+<a href="games/@Game.Id" class="game-card @platformClass">
+    <div class="game-card-cover">
+        @if (!string.IsNullOrEmpty(Game.CoverImageUrl))
+        {
+            <img src="@Game.CoverImageUrl" alt="@Game.Title" />
+        }
+        else
+        {
+            <div class="game-card-placeholder">
+                <span>@Game.Title[0]</span>
+            </div>
+        }
+    </div>
+    <div class="game-card-info">
+        <h5 class="game-card-title">@Game.Title</h5>
+        <div class="game-card-meta">
+            <span class="badge @platformClass">@platformLabel</span>
+            @if (Game.HasDlc)
+            {
+                <span class="badge badge-dlc">DLC</span>
+            }
+            @if (Game.HasUpdates)
+            {
+                <span class="badge badge-update">Update</span>
+            }
+        </div>
+    </div>
+</a>
+
+@code {
+    [Parameter, EditorRequired]
+    public GameListDto Game { get; set; } = default!;
+}

@@ -1,0 +1,24 @@
+@{
+    var label = Platform switch
+    {
+        PlatformType.NintendoSwitch => "Switch",
+        PlatformType.NintendoDS => "DS",
+        PlatformType.Nintendo3DS => "3DS",
+        _ => Platform.ToString()
+    };
+
+    var cssClass = Platform switch
+    {
+        PlatformType.NintendoSwitch => "platform-switch",
+        PlatformType.NintendoDS => "platform-ds",
+        PlatformType.Nintendo3DS => "platform-3ds",
+        _ => ""
+    };
+}
+
+<span class="badge @cssClass">@label</span>
+
+@code {
+    [Parameter, EditorRequired]
+    public PlatformType Platform { get; set; }
+}
