@@ -1,0 +1,234 @@
+@page "/admin/games/{GameId:int}/content"
+@inject IGameService GameService
+@inject GrimoireDbContext Db
+@rendermode InteractiveServer
+@using Grimoire.Server.Data
+@using Grimoire.Server.Entities
+@using Microsoft.EntityFrameworkCore
+
+<PageTitle>Manage Content - Grimoire</PageTitle>
+
+<AdminGuard>
+    @if (game is null)
+    {
+        <p class="loading">Loading...</p>
+    }
+    else
+    {
+        <div class="admin-header">
+            <div>
+                <h2>@game.Title</h2>
+                <span class="text-secondary"><PlatformBadge Platform="game.Platform" /></span>
+            </div>
+            <a href="/admin/games" class="btn btn-outline">Back to Entries</a>
+        </div>
+
+        @* ── DLC Section ── *@
+        <div class="admin-form">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h4 style="margin: 0;">DLC (@dlcs.Count)</h4>
+                <button class="btn-sm btn-edit" @onclick="ShowDlcForm">Add DLC</button>
+            </div>
+
+            @if (showDlcForm)
+            {
+                <div style="background: var(--bg-inset); border-radius: 4px; padding: 1rem; margin-bottom: 1rem;">
+                    <div class="form-group">
+                        <label>Title</label>
+                        <input class="form-control" @bind="dlcTitle" placeholder="e.g. Expansion Pass" />
+                    </div>
+                    <div class="form-group">
+                        <label>Version (optional)</label>
+                        <input class="form-control" @bind="dlcVersion" placeholder="e.g. 1.0" />
+                    </div>
+                    <div class="form-group">
+                        <label>File Path (relative to DLC storage)</label>
+                        <input class="form-control" @bind="dlcFilePath" placeholder="e.g. switch/zelda_botw_dlc1.nsp" />
+                    </div>
+                    <div class="form-group">
+                        <label>File Size (bytes)</label>
+                        <input class="form-control" type="number" @bind="dlcFileSize" />
+                    </div>
+                    <div class="form-actions">
+                        <button class="btn btn-primary" @onclick="SaveDlc">Save</button>
+                        <button class="btn btn-outline" @onclick="() => showDlcForm = false">Cancel</button>
+                    </div>
+                </div>
+            }
+
+            @if (dlcs.Count > 0)
+            {
+                <div class="content-list">
+                    @foreach (var dlc in dlcs)
+                    {
+                        <div class="content-item">
+                            <div>
+                                <span class="content-title">@dlc.Title</span>
+                                @if (!string.IsNullOrEmpty(dlc.Version))
+                                {
+                                    <span class="text-secondary" style="font-size: 0.8rem; margin-left: 0.5rem;">v@dlc.Version</span>
+                                }
+                                <br />
+                                <code style="font-size: 0.75rem; color: var(--text-faint);">@dlc.FilePath</code>
+                            </div>
+                            <div class="actions">
+                                <span class="content-size">@FormatSize(dlc.FileSize)</span>
+                                <button class="btn-sm btn-delete" @onclick="() => DeleteDlc(dlc.Id)">Remove</button>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <p class="text-secondary" style="font-style: italic; margin: 0;">No DLC entries.</p>
+            }
+        </div>
+
+        @* ── Updates Section ── *@
+        <div class="admin-form">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h4 style="margin: 0;">Updates (@updates.Count)</h4>
+                <button class="btn-sm btn-edit" @onclick="ShowUpdateForm">Add Update</button>
+            </div>
+
+            @if (showUpdateForm)
+            {
+                <div style="background: var(--bg-inset); border-radius: 4px; padding: 1rem; margin-bottom: 1rem;">
+                    <div class="form-group">
+                        <label>Title</label>
+                        <input class="form-control" @bind="updateTitle" placeholder="e.g. v1.6.0" />
+                    </div>
+                    <div class="form-group">
+                        <label>Version</label>
+                        <input class="form-control" @bind="updateVersion" placeholder="e.g. 1.6.0" />
+                    </div>
+                    <div class="form-group">
+                        <label>File Path (relative to Updates storage)</label>
+                        <input class="form-control" @bind="updateFilePath" placeholder="e.g. switch/zelda_botw_v1.6.0.nsp" />
+                    </div>
+                    <div class="form-group">
+                        <label>File Size (bytes)</label>
+                        <input class="form-control" type="number" @bind="updateFileSize" />
+                    </div>
+                    <div class="form-actions">
+                        <button class="btn btn-primary" @onclick="SaveUpdate">Save</button>
+                        <button class="btn btn-outline" @onclick="() => showUpdateForm = false">Cancel</button>
+                    </div>
+                </div>
+            }
+
+            @if (updates.Count > 0)
+            {
+                <div class="content-list">
+                    @foreach (var update in updates)
+                    {
+                        <div class="content-item">
+                            <div>
+                                <span class="content-title">@update.Title</span>
+                                <span class="text-secondary" style="font-size: 0.8rem; margin-left: 0.5rem;">v@update.Version</span>
+                                <br />
+                                <code style="font-size: 0.75rem; color: var(--text-faint);">@update.FilePath</code>
+                            </div>
+                            <div class="actions">
+                                <span class="content-size">@FormatSize(update.FileSize)</span>
+                                <button class="btn-sm btn-delete" @onclick="() => DeleteUpdate(update.Id)">Remove</button>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <p class="text-secondary" style="font-style: italic; margin: 0;">No update entries.</p>
+            }
+        </div>
+    }
+</AdminGuard>
+
+@code {
+    [Parameter] public int GameId { get; set; }
+
+    private GameDetailDto? game;
+    private List<DlcEntity> dlcs = [];
+    private List<UpdateEntity> updates = [];
+
+    // DLC form
+    private bool showDlcForm;
+    private string dlcTitle = "";
+    private string? dlcVersion;
+    private string dlcFilePath = "";
+    private long dlcFileSize;
+
+    // Update form
+    private bool showUpdateForm;
+    private string updateTitle = "";
+    private string updateVersion = "";
+    private string updateFilePath = "";
+    private long updateFileSize;
+
+    protected override async Task OnInitializedAsync() => await LoadData();
+
+    private async Task LoadData()
+    {
+        game = await GameService.GetGameDetailAsync(GameId);
+        dlcs = await Db.Dlcs.Where(d => d.GameId == GameId).OrderBy(d => d.Title).ToListAsync();
+        updates = await Db.Updates.Where(u => u.GameId == GameId).OrderByDescending(u => u.Version).ToListAsync();
+    }
+
+    private void ShowDlcForm()
+    {
+        dlcTitle = ""; dlcVersion = null; dlcFilePath = ""; dlcFileSize = 0; showDlcForm = true;
+    }
+
+    private void ShowUpdateForm()
+    {
+        updateTitle = ""; updateVersion = ""; updateFilePath = ""; updateFileSize = 0; showUpdateForm = true;
+    }
+
+    private async Task SaveDlc()
+    {
+        Db.Dlcs.Add(new DlcEntity
+        {
+            GameId = GameId, Title = dlcTitle, Version = dlcVersion,
+            FilePath = dlcFilePath, FileSize = dlcFileSize
+        });
+        await Db.SaveChangesAsync();
+        showDlcForm = false;
+        await LoadData();
+    }
+
+    private async Task SaveUpdate()
+    {
+        Db.Updates.Add(new UpdateEntity
+        {
+            GameId = GameId, Title = updateTitle, Version = updateVersion,
+            FilePath = updateFilePath, FileSize = updateFileSize
+        });
+        await Db.SaveChangesAsync();
+        showUpdateForm = false;
+        await LoadData();
+    }
+
+    private async Task DeleteDlc(int id)
+    {
+        var entity = await Db.Dlcs.FindAsync(id);
+        if (entity is not null) { Db.Dlcs.Remove(entity); await Db.SaveChangesAsync(); }
+        await LoadData();
+    }
+
+    private async Task DeleteUpdate(int id)
+    {
+        var entity = await Db.Updates.FindAsync(id);
+        if (entity is not null) { Db.Updates.Remove(entity); await Db.SaveChangesAsync(); }
+        await LoadData();
+    }
+
+    private static string FormatSize(long bytes) => bytes switch
+    {
+        >= 1_000_000_000 => $"{bytes / 1_000_000_000.0:F1} GB",
+        >= 1_000_000 => $"{bytes / 1_000_000.0:F1} MB",
+        >= 1_000 => $"{bytes / 1_000.0:F1} KB",
+        _ => $"{bytes} B"
+    };
+}

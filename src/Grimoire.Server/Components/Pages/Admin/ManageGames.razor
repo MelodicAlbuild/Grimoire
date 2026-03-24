@@ -78,6 +78,7 @@
                         <td>@(game.HasDlc ? "Yes" : "-")</td>
                         <td>@(game.HasUpdates ? "Yes" : "-")</td>
                         <td class="actions">
+                            <a class="btn-sm btn-edit" href="/admin/games/@game.Id/content">DLC/Updates</a>
                             <button class="btn-sm btn-edit" @onclick="() => EditGame(game)">Edit</button>
                             <button class="btn-sm btn-delete" @onclick="() => DeleteGame(game.Id)">Delete</button>
                         </td>

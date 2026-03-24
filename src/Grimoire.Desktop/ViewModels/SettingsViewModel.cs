@@ -9,7 +9,7 @@ public partial class SettingsViewModel : ViewModelBase
     private readonly ISettingsService _settings;
 
     [ObservableProperty]
-    private string _serverUrl = "http://localhost:5038";
+    private string _serverUrl = "https://emu.melodicalbuild.com";
 
     [ObservableProperty]
     private string _installDirectory = "";

@@ -86,7 +86,7 @@ public class App : Application
         // API Client with resilience policies
         services.AddHttpClient<IGrimoireApi, GrimoireApiClient>(client =>
         {
-            client.BaseAddress = new Uri("http://localhost:5038");
+            client.BaseAddress = new Uri("https://emu.melodicalbuild.com");
             client.Timeout = TimeSpan.FromMinutes(30);
         })
         .AddStandardResilienceHandler(options =>

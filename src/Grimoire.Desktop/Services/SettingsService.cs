@@ -47,7 +47,7 @@ public class SettingsService : ISettingsService
 
     public async Task<string> GetServerUrlAsync()
     {
-        return await GetAsync(ServerUrlKey) ?? "http://localhost:5038";
+        return await GetAsync(ServerUrlKey) ?? "https://emu.melodicalbuild.com";
     }
 
     public async Task SetServerUrlAsync(string url)
