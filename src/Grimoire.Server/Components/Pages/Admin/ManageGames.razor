@@ -40,6 +40,10 @@
                 <label>File Size (bytes)</label>
                 <input class="form-control" type="number" @bind="formFileSize" />
             </div>
+            <div class="form-group">
+                <label>Cover Image Path (relative to covers storage, optional)</label>
+                <input class="form-control" @bind="formCoverPath" placeholder="e.g. switch/zelda_botw.jpg" />
+            </div>
             <div class="form-actions">
                 <button class="btn btn-primary" @onclick="SaveGame">Save</button>
                 <button class="btn btn-outline" @onclick="CancelForm">Cancel</button>
@@ -93,6 +97,7 @@
     private string? formDescription;
     private string formFilePath = "";
     private long formFileSize;
+    private string? formCoverPath;
 
     protected override async Task OnInitializedAsync() => await LoadGames();
 
@@ -101,25 +106,26 @@
     private void ShowAddForm()
     {
         editingId = null; formTitle = ""; formPlatform = PlatformType.NintendoSwitch;
-        formDescription = null; formFilePath = ""; formFileSize = 0; showForm = true;
+        formDescription = null; formFilePath = ""; formFileSize = 0; formCoverPath = null; showForm = true;
     }
 
     private void EditGame(GameListDto game)
     {
         editingId = game.Id; formTitle = game.Title; formPlatform = game.Platform;
-        formDescription = null; formFilePath = ""; formFileSize = 0; showForm = true;
+        formDescription = null; formFilePath = ""; formFileSize = 0; formCoverPath = null; showForm = true;
     }
 
     private void CancelForm() => showForm = false;
 
     private async Task SaveGame()
     {
+        var cover = string.IsNullOrWhiteSpace(formCoverPath) ? null : formCoverPath;
         if (editingId.HasValue)
             await AdminService.UpdateGameAsync(editingId.Value, new GameUpdateDto(
-                formTitle, formPlatform, formDescription, formFilePath, formFileSize));
+                formTitle, formPlatform, formDescription, formFilePath, formFileSize, cover));
         else
             await AdminService.CreateGameAsync(new GameCreateDto(
-                formTitle, formPlatform, formDescription, formFilePath, formFileSize));
+                formTitle, formPlatform, formDescription, formFilePath, formFileSize, cover));
         showForm = false;
         await LoadGames();
     }

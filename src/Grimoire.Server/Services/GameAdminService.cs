@@ -21,7 +21,8 @@ public class GameAdminService : IGameAdminService
             Platform = dto.Platform,
             Description = dto.Description,
             FilePath = dto.FilePath,
-            FileSize = dto.FileSize
+            FileSize = dto.FileSize,
+            CoverImagePath = dto.CoverImagePath
         };
 
         _db.Games.Add(entity);
@@ -39,6 +40,7 @@ public class GameAdminService : IGameAdminService
         entity.Description = dto.Description;
         entity.FilePath = dto.FilePath;
         entity.FileSize = dto.FileSize;
+        entity.CoverImagePath = dto.CoverImagePath;
         entity.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();

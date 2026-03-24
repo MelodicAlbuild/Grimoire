@@ -7,7 +7,8 @@ public record GameCreateDto(
     PlatformType Platform,
     string? Description,
     string FilePath,
-    long FileSize
+    long FileSize,
+    string? CoverImagePath = null
 );
 
 public record GameUpdateDto(
@@ -15,7 +16,8 @@ public record GameUpdateDto(
     PlatformType Platform,
     string? Description,
     string FilePath,
-    long FileSize
+    long FileSize,
+    string? CoverImagePath = null
 );
 
 public interface IGameAdminService

@@ -92,12 +92,16 @@ public class LibraryScanService : BackgroundService, ILibraryScanService
                 .Replace('_', ' ')
                 .Replace('-', ' ');
 
+            // Auto-detect cover image if one exists with the same base name
+            var coverPath = FindCoverImage(Path.GetFileNameWithoutExtension(file));
+
             newGames.Add(new GameEntity
             {
                 Title = title,
                 Platform = platform,
                 FilePath = relativePath,
-                FileSize = fileInfo.Length
+                FileSize = fileInfo.Length,
+                CoverImagePath = coverPath
             });
         }
 
@@ -114,5 +118,28 @@ public class LibraryScanService : BackgroundService, ILibraryScanService
         }
 
         return new ScanResult(newGames.Count, scannedCount);
+    }
+
+    /// <summary>
+    /// Searches CoverImagesBasePath for an image matching the game's filename.
+    /// Looks for: {name}.jpg, {name}.png, {name}.webp (case-insensitive).
+    /// Returns the relative path or null.
+    /// </summary>
+    private string? FindCoverImage(string gameFileNameWithoutExtension)
+    {
+        if (string.IsNullOrWhiteSpace(_storage.CoverImagesBasePath)
+            || !Directory.Exists(_storage.CoverImagesBasePath))
+            return null;
+
+        string[] imageExts = [".jpg", ".jpeg", ".png", ".webp"];
+        foreach (var ext in imageExts)
+        {
+            // Search recursively for a matching filename
+            var matches = Directory.GetFiles(_storage.CoverImagesBasePath,
+                gameFileNameWithoutExtension + ext, SearchOption.AllDirectories);
+            if (matches.Length > 0)
+                return Path.GetRelativePath(_storage.CoverImagesBasePath, matches[0]);
+        }
+        return null;
     }
 }

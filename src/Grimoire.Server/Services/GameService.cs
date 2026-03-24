@@ -25,17 +25,16 @@ public class GameService : IGameService
         if (!string.IsNullOrWhiteSpace(search))
             query = query.Where(g => g.Title.Contains(search));
 
-        return await query
+        var results = await query
             .OrderBy(g => g.Title)
-            .Select(g => new GameListDto(
-                g.Id,
-                g.Title,
-                g.Platform,
-                g.CoverImagePath,
-                g.Dlcs.Any(),
-                g.Updates.Any()
-            ))
+            .Select(g => new { g.Id, g.Title, g.Platform, g.CoverImagePath, HasDlc = g.Dlcs.Any(), HasUpdates = g.Updates.Any() })
             .ToListAsync();
+
+        return results.Select(g => new GameListDto(
+            g.Id, g.Title, g.Platform,
+            CoverUrl(g.Id, g.CoverImagePath),
+            g.HasDlc, g.HasUpdates
+        )).ToList();
     }
 
     public async Task<GameDetailDto?> GetGameDetailAsync(int gameId)
@@ -53,7 +52,7 @@ public class GameService : IGameService
             game.Title,
             game.Platform,
             game.Description,
-            game.CoverImagePath,
+            CoverUrl(game.Id, game.CoverImagePath),
             game.FileSize,
             game.FileHash,
             game.Dlcs.Select(d => new DlcInfo(d.Id, d.GameId, d.Title, d.Version, d.FileSize)).ToList(),
@@ -74,6 +73,9 @@ public class GameService : IGameService
             s.Count
         )).ToList();
     }
+
+    private static string? CoverUrl(int gameId, string? path)
+        => string.IsNullOrEmpty(path) ? null : $"/api/covers/{gameId}";
 
     private static string FormatPlatformName(PlatformType platform) => platform switch
     {
