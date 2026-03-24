@@ -1,0 +1,31 @@
+@inject IHttpContextAccessor HttpContextAccessor
+@inject NavigationManager Nav
+
+@if (_isAuthenticated)
+{
+    @ChildContent
+}
+else
+{
+    <p class="loading">Redirecting to login...</p>
+}
+
+@code {
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    private bool _isAuthenticated;
+
+    protected override void OnInitialized()
+    {
+        var context = HttpContextAccessor.HttpContext;
+        _isAuthenticated = context?.Request.Cookies
+            .ContainsKey(Controllers.AdminAuthController.CookieName) == true;
+
+        if (!_isAuthenticated)
+        {
+            var currentUrl = Nav.ToBaseRelativePath(Nav.Uri);
+            Nav.NavigateTo($"/admin?returnUrl={Uri.EscapeDataString("/" + currentUrl)}", forceLoad: true);
+        }
+    }
+}

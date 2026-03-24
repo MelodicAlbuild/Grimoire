@@ -6,11 +6,18 @@ using Microsoft.Extensions.Options;
 
 namespace Grimoire.Server.Services;
 
+public interface ILibraryScanService
+{
+    Task<ScanResult> ScanAsync(CancellationToken ct = default);
+}
+
+public record ScanResult(int ImportedCount, int ScannedCount, string? Error = null);
+
 /// <summary>
 /// Background service that scans configured storage directories
 /// and auto-imports games into the database.
 /// </summary>
-public class LibraryScanService : BackgroundService
+public class LibraryScanService : BackgroundService, ILibraryScanService
 {
     private readonly IServiceProvider _services;
     private readonly ILogger<LibraryScanService> _logger;
@@ -42,23 +49,22 @@ public class LibraryScanService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        // Run initial scan after a short delay to let the app start up
         await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
         await ScanAsync(stoppingToken);
     }
 
-    public async Task ScanAsync(CancellationToken ct = default)
+    public async Task<ScanResult> ScanAsync(CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(_storage.GamesBasePath))
         {
             _logger.LogInformation("Games base path not configured, skipping library scan");
-            return;
+            return new ScanResult(0, 0, "Games base path not configured");
         }
 
         if (!Directory.Exists(_storage.GamesBasePath))
         {
             _logger.LogWarning("Games base path does not exist: {Path}", _storage.GamesBasePath);
-            return;
+            return new ScanResult(0, 0, $"Path does not exist: {_storage.GamesBasePath}");
         }
 
         _logger.LogInformation("Starting library scan of {Path}", _storage.GamesBasePath);
@@ -68,6 +74,7 @@ public class LibraryScanService : BackgroundService
 
         var existingPaths = await db.Games.Select(g => g.FilePath).ToHashSetAsync(ct);
         var newGames = new List<GameEntity>();
+        var scannedCount = 0;
 
         foreach (var file in Directory.EnumerateFiles(_storage.GamesBasePath, "*.*", SearchOption.AllDirectories))
         {
@@ -75,6 +82,7 @@ public class LibraryScanService : BackgroundService
             if (!ExtensionToPlatform.TryGetValue(ext, out var platform))
                 continue;
 
+            scannedCount++;
             var relativePath = Path.GetRelativePath(_storage.GamesBasePath, file);
             if (existingPaths.Contains(relativePath))
                 continue;
@@ -97,11 +105,14 @@ public class LibraryScanService : BackgroundService
         {
             db.Games.AddRange(newGames);
             await db.SaveChangesAsync(ct);
-            _logger.LogInformation("Library scan complete: imported {Count} new games", newGames.Count);
+            _logger.LogInformation("Library scan complete: imported {Count} new games out of {Scanned} scanned",
+                newGames.Count, scannedCount);
         }
         else
         {
-            _logger.LogInformation("Library scan complete: no new games found");
+            _logger.LogInformation("Library scan complete: no new games found ({Scanned} scanned)", scannedCount);
         }
+
+        return new ScanResult(newGames.Count, scannedCount);
     }
 }

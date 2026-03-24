@@ -4,48 +4,57 @@
 
 <PageTitle>Settings - Grimoire</PageTitle>
 
-<h2>Server Settings</h2>
+<AdminGuard>
+    <h2>Server Settings</h2>
 
-<div class="admin-form">
-    <p class="text-secondary">
-        Storage paths are configured in <code>appsettings.json</code>. Restart the server after changes.
-    </p>
+    <div class="admin-form">
+        <p class="text-secondary">
+            Storage paths are configured in <code>appsettings.json</code>. Restart the server after changes.
+        </p>
 
-    <div class="settings-grid">
-        <div class="setting-item">
-            <label>Games Base Path</label>
-            <code>@GetSetting("Storage:GamesBasePath")</code>
-        </div>
-        <div class="setting-item">
-            <label>DLC Base Path</label>
-            <code>@GetSetting("Storage:DlcBasePath")</code>
-        </div>
-        <div class="setting-item">
-            <label>Updates Base Path</label>
-            <code>@GetSetting("Storage:UpdatesBasePath")</code>
-        </div>
-        <div class="setting-item">
-            <label>Emulators Base Path</label>
-            <code>@GetSetting("Storage:EmulatorsBasePath")</code>
-        </div>
-        <div class="setting-item">
-            <label>Firmware Base Path</label>
-            <code>@GetSetting("Storage:FirmwareBasePath")</code>
-        </div>
-        <div class="setting-item">
-            <label>BIOS Base Path</label>
-            <code>@GetSetting("Storage:BiosBasePath")</code>
-        </div>
-        <div class="setting-item">
-            <label>Cover Images Base Path</label>
-            <code>@GetSetting("Storage:CoverImagesBasePath")</code>
-        </div>
-        <div class="setting-item">
-            <label>Database Connection</label>
-            <code>@GetSetting("ConnectionStrings:DefaultConnection")</code>
+        <div class="settings-grid">
+            <div class="setting-item">
+                <label>Games Base Path</label>
+                <code>@GetSetting("Storage:GamesBasePath")</code>
+            </div>
+            <div class="setting-item">
+                <label>DLC Base Path</label>
+                <code>@GetSetting("Storage:DlcBasePath")</code>
+            </div>
+            <div class="setting-item">
+                <label>Updates Base Path</label>
+                <code>@GetSetting("Storage:UpdatesBasePath")</code>
+            </div>
+            <div class="setting-item">
+                <label>Emulators Base Path</label>
+                <code>@GetSetting("Storage:EmulatorsBasePath")</code>
+            </div>
+            <div class="setting-item">
+                <label>Firmware Base Path</label>
+                <code>@GetSetting("Storage:FirmwareBasePath")</code>
+            </div>
+            <div class="setting-item">
+                <label>BIOS Base Path</label>
+                <code>@GetSetting("Storage:BiosBasePath")</code>
+            </div>
+            <div class="setting-item">
+                <label>Cover Images Base Path</label>
+                <code>@GetSetting("Storage:CoverImagesBasePath")</code>
+            </div>
+            <div class="setting-item">
+                <label>Database</label>
+                <code>@GetSetting("ConnectionStrings:DefaultConnection")</code>
+            </div>
         </div>
     </div>
-</div>
+
+    <div class="admin-form" style="margin-top: 1rem;">
+        <h4>Session</h4>
+        <form method="post" action="/api/admin/logout">
+            <button type="submit" class="btn btn-outline">Logout</button>
+        </form>
+    </div>
+</AdminGuard>
 
 @code {
     private string GetSetting(string key)

@@ -1,3 +1,5 @@
+@inject IHttpContextAccessor HttpContextAccessor
+
 <div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
         <a class="navbar-brand" href="">Grimoire</a>
@@ -26,21 +28,54 @@
             </NavLink>
         </div>
 
-        <div class="nav-separator px-3">
-            <hr />
-            <span class="nav-section-label">Keeper</span>
-        </div>
+        @if (IsAdmin)
+        {
+            <div class="nav-separator px-3">
+                <hr />
+                <span class="nav-section-label">Keeper</span>
+            </div>
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="admin/games">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Manage Entries
-            </NavLink>
-        </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="admin/games">
+                    <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Manage Entries
+                </NavLink>
+            </div>
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="admin/settings">
-                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Settings
-            </NavLink>
-        </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="admin/emulators">
+                    <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Emulators
+                </NavLink>
+            </div>
+
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="admin/scan">
+                    <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Scan Library
+                </NavLink>
+            </div>
+
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="admin/settings">
+                    <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Settings
+                </NavLink>
+            </div>
+        }
+        else
+        {
+            <div class="nav-separator px-3">
+                <hr />
+            </div>
+
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="admin">
+                    <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Keeper Login
+                </NavLink>
+            </div>
+        }
     </nav>
 </div>
+
+@code {
+    private bool IsAdmin =>
+        HttpContextAccessor.HttpContext?.Request.Cookies
+            .ContainsKey(Grimoire.Server.Controllers.AdminAuthController.CookieName) == true;
+}

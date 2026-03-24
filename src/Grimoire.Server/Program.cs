@@ -37,7 +37,11 @@ try
     builder.Services.AddScoped<IGameService, GameService>();
     builder.Services.AddScoped<IGameAdminService, GameAdminService>();
     builder.Services.AddScoped<IFileProxyService, FileProxyService>();
-    builder.Services.AddHostedService<LibraryScanService>();
+    builder.Services.AddSingleton<LibraryScanService>();
+    builder.Services.AddHostedService(sp => sp.GetRequiredService<LibraryScanService>());
+    builder.Services.AddSingleton<ILibraryScanService>(sp => sp.GetRequiredService<LibraryScanService>());
+    builder.Services.AddSingleton<IAdminAuthService, AdminAuthService>();
+    builder.Services.AddHttpContextAccessor();
 
     // Health checks
     builder.Services.AddHealthChecks();

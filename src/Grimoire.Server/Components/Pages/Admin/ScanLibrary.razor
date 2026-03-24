@@ -1,0 +1,121 @@
+@page "/admin/scan"
+@inject ILibraryScanService ScanService
+@inject IGameService GameService
+@inject IConfiguration Configuration
+@rendermode InteractiveServer
+
+<PageTitle>Scan Library - Grimoire</PageTitle>
+
+<AdminGuard>
+    <div class="admin-header">
+        <h2>Scan Library</h2>
+        <button class="btn btn-primary" @onclick="RunScan" disabled="@isScanning">
+            @(isScanning ? "Scanning..." : "Trigger Scan")
+        </button>
+    </div>
+
+    <div class="admin-form">
+        <div class="setting-item">
+            <label>Games Base Path</label>
+            <code>@(Configuration["Storage:GamesBasePath"] ?? "(not set)")</code>
+        </div>
+    </div>
+
+    @if (isScanning)
+    {
+        <p class="loading">The tome is being catalogued...</p>
+    }
+
+    @if (lastResult is not null)
+    {
+        <div class="admin-form">
+            <h4>Scan Result</h4>
+            @if (lastResult.Error is not null)
+            {
+                <div class="admin-error">@lastResult.Error</div>
+            }
+            else
+            {
+                <div class="settings-grid">
+                    <div class="setting-item">
+                        <label>Files Scanned</label>
+                        <code>@lastResult.ScannedCount</code>
+                    </div>
+                    <div class="setting-item">
+                        <label>New Entries Imported</label>
+                        <code>@lastResult.ImportedCount</code>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+    <div class="admin-form" style="margin-top: 1rem;">
+        <h4>Library Stats</h4>
+        @if (platformStats is not null)
+        {
+            <div class="settings-grid">
+                <div class="setting-item">
+                    <label>Total Games</label>
+                    <code>@totalGames</code>
+                </div>
+                @foreach (var p in platformStats)
+                {
+                    <div class="setting-item">
+                        <label>@p.DisplayName</label>
+                        <code>@p.GameCount</code>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    <div class="admin-form" style="margin-top: 1rem;">
+        <h4>Recognized File Types</h4>
+        <div class="content-list">
+            <div class="content-item"><span class="content-title">.nsp, .xci, .nca</span><span class="content-size">Nintendo Switch</span></div>
+            <div class="content-item"><span class="content-title">.nds, .dsi</span><span class="content-size">Nintendo DS</span></div>
+            <div class="content-item"><span class="content-title">.3ds, .cci, .cxi, .cia</span><span class="content-size">Nintendo 3DS</span></div>
+            <div class="content-item"><span class="content-title">.gb, .gbc, .gba</span><span class="content-size">Game Boy</span></div>
+        </div>
+    </div>
+</AdminGuard>
+
+@code {
+    private bool isScanning;
+    private ScanResult? lastResult;
+    private IReadOnlyList<PlatformInfoDto>? platformStats;
+    private int totalGames;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadStats();
+    }
+
+    private async Task LoadStats()
+    {
+        platformStats = await GameService.GetPlatformStatsAsync();
+        totalGames = await GameService.GetGameCountAsync();
+    }
+
+    private async Task RunScan()
+    {
+        isScanning = true;
+        lastResult = null;
+        StateHasChanged();
+
+        try
+        {
+            lastResult = await ScanService.ScanAsync();
+            await LoadStats();
+        }
+        catch (Exception ex)
+        {
+            lastResult = new ScanResult(0, 0, ex.Message);
+        }
+        finally
+        {
+            isScanning = false;
+        }
+    }
+}

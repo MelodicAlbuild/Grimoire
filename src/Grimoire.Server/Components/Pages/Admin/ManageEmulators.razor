@@ -1,0 +1,253 @@
+@page "/admin/emulators"
+@inject IGameService GameService
+@inject GrimoireDbContext Db
+@rendermode InteractiveServer
+@using Grimoire.Server.Data
+@using Grimoire.Server.Entities
+@using Microsoft.EntityFrameworkCore
+
+<PageTitle>Manage Emulators - Grimoire</PageTitle>
+
+<AdminGuard>
+    <div class="admin-header">
+        <h2>Manage Emulators</h2>
+        <button class="btn btn-primary" @onclick="ShowAddForm">Add Emulator</button>
+    </div>
+
+    @if (showForm)
+    {
+        <div class="admin-form">
+            <h4>@(editingId.HasValue ? "Edit Emulator" : "New Emulator")</h4>
+            <div class="form-group">
+                <label>Name</label>
+                <input class="form-control" @bind="formName" placeholder="e.g. Ryubing" />
+            </div>
+            <div class="form-group">
+                <label>Platform</label>
+                <select class="form-control" @bind="formPlatform">
+                    @foreach (var p in Enum.GetValues<PlatformType>())
+                    {
+                        <option value="@p">@p</option>
+                    }
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Version</label>
+                <input class="form-control" @bind="formVersion" placeholder="e.g. 1.2.82" />
+            </div>
+            <div class="form-group">
+                <label>Executable Name</label>
+                <input class="form-control" @bind="formExeName" placeholder="e.g. Ryujinx.exe" />
+            </div>
+            <div class="form-actions">
+                <button class="btn btn-primary" @onclick="SaveEmulator">Save</button>
+                <button class="btn btn-outline" @onclick="() => showForm = false">Cancel</button>
+            </div>
+        </div>
+    }
+
+    @if (showBinaryForm)
+    {
+        <div class="admin-form">
+            <h4>Add Binary for @binaryEmulatorName</h4>
+            <div class="form-group">
+                <label>Runtime ID</label>
+                <select class="form-control" @bind="formRid">
+                    <option value="win-x64">win-x64</option>
+                    <option value="linux-x64">linux-x64</option>
+                    <option value="osx-arm64">osx-arm64</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>File Path (relative to EmulatorsBasePath)</label>
+                <input class="form-control" @bind="formBinaryPath" placeholder="e.g. ryubing/win-x64/Ryubing.zip" />
+            </div>
+            <div class="form-group">
+                <label>File Size (bytes)</label>
+                <input class="form-control" type="number" @bind="formBinarySize" />
+            </div>
+            <div class="form-actions">
+                <button class="btn btn-primary" @onclick="SaveBinary">Save Binary</button>
+                <button class="btn btn-outline" @onclick="() => showBinaryForm = false">Cancel</button>
+            </div>
+        </div>
+    }
+
+    @if (emulators is null)
+    {
+        <p class="loading">Loading...</p>
+    }
+    else
+    {
+        @foreach (var emu in emulators)
+        {
+            <div class="admin-form" style="margin-bottom: 1rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                    <div>
+                        <h4 style="margin: 0;">@emu.Name</h4>
+                        <span class="text-secondary" style="font-size: 0.85rem;">
+                            <PlatformBadge Platform="emu.Platform" /> v@emu.Version &mdash; @emu.ExecutableName
+                        </span>
+                    </div>
+                    <div class="actions">
+                        <button class="btn-sm btn-edit" @onclick="() => ShowAddBinaryForm(emu.Id, emu.Name)">Add Binary</button>
+                        <button class="btn-sm btn-edit" @onclick="() => EditEmulator(emu)">Edit</button>
+                        <button class="btn-sm btn-delete" @onclick="() => DeleteEmulator(emu.Id)">Delete</button>
+                    </div>
+                </div>
+
+                @if (emu.Binaries.Count > 0)
+                {
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Runtime</th>
+                                <th>File Path</th>
+                                <th>Size</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var bin in emu.Binaries)
+                            {
+                                <tr>
+                                    <td><code>@bin.RuntimeId</code></td>
+                                    <td style="font-size: 0.85rem;">@GetBinaryPath(emu.Id, bin.Id)</td>
+                                    <td>@FormatSize(bin.FileSize)</td>
+                                    <td>
+                                        <button class="btn-sm btn-delete" @onclick="() => DeleteBinary(bin.Id)">Remove</button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+                else
+                {
+                    <p class="text-secondary" style="font-size: 0.85rem; font-style: italic; margin: 0;">No binaries uploaded yet.</p>
+                }
+            </div>
+        }
+    }
+</AdminGuard>
+
+@code {
+    private IReadOnlyList<EmulatorDto>? emulators;
+    private Dictionary<int, Dictionary<int, string>> binaryPaths = new();
+
+    // Emulator form
+    private bool showForm;
+    private int? editingId;
+    private string formName = "";
+    private PlatformType formPlatform = PlatformType.NintendoSwitch;
+    private string formVersion = "";
+    private string formExeName = "";
+
+    // Binary form
+    private bool showBinaryForm;
+    private int binaryEmulatorId;
+    private string binaryEmulatorName = "";
+    private string formRid = "win-x64";
+    private string formBinaryPath = "";
+    private long formBinarySize;
+
+    protected override async Task OnInitializedAsync() => await LoadEmulators();
+
+    private async Task LoadEmulators()
+    {
+        emulators = await GameService.GetEmulatorsAsync();
+
+        // Load binary file paths from DB (DTOs don't include paths for security)
+        binaryPaths.Clear();
+        var binaries = await Db.EmulatorBinaries.ToListAsync();
+        foreach (var b in binaries)
+        {
+            if (!binaryPaths.ContainsKey(b.EmulatorId))
+                binaryPaths[b.EmulatorId] = new();
+            binaryPaths[b.EmulatorId][b.Id] = b.FilePath;
+        }
+    }
+
+    private string GetBinaryPath(int emulatorId, int binaryId)
+    {
+        return binaryPaths.GetValueOrDefault(emulatorId)?.GetValueOrDefault(binaryId) ?? "?";
+    }
+
+    private void ShowAddForm()
+    {
+        editingId = null; formName = ""; formPlatform = PlatformType.NintendoSwitch;
+        formVersion = ""; formExeName = ""; showForm = true; showBinaryForm = false;
+    }
+
+    private void EditEmulator(EmulatorDto emu)
+    {
+        editingId = emu.Id; formName = emu.Name; formPlatform = emu.Platform;
+        formVersion = emu.Version; formExeName = emu.ExecutableName; showForm = true; showBinaryForm = false;
+    }
+
+    private void ShowAddBinaryForm(int emulatorId, string name)
+    {
+        binaryEmulatorId = emulatorId; binaryEmulatorName = name;
+        formRid = "win-x64"; formBinaryPath = ""; formBinarySize = 0;
+        showBinaryForm = true; showForm = false;
+    }
+
+    private async Task SaveEmulator()
+    {
+        if (editingId.HasValue)
+        {
+            var entity = await Db.Emulators.FindAsync(editingId.Value);
+            if (entity is not null)
+            {
+                entity.Name = formName; entity.Platform = formPlatform;
+                entity.Version = formVersion; entity.ExecutableName = formExeName;
+                await Db.SaveChangesAsync();
+            }
+        }
+        else
+        {
+            Db.Emulators.Add(new EmulatorEntity
+            {
+                Name = formName, Platform = formPlatform,
+                Version = formVersion, ExecutableName = formExeName
+            });
+            await Db.SaveChangesAsync();
+        }
+        showForm = false;
+        await LoadEmulators();
+    }
+
+    private async Task DeleteEmulator(int id)
+    {
+        var entity = await Db.Emulators.Include(e => e.Binaries).FirstOrDefaultAsync(e => e.Id == id);
+        if (entity is not null) { Db.Emulators.Remove(entity); await Db.SaveChangesAsync(); }
+        await LoadEmulators();
+    }
+
+    private async Task SaveBinary()
+    {
+        Db.EmulatorBinaries.Add(new EmulatorBinaryEntity
+        {
+            EmulatorId = binaryEmulatorId, RuntimeId = formRid,
+            FilePath = formBinaryPath, FileSize = formBinarySize
+        });
+        await Db.SaveChangesAsync();
+        showBinaryForm = false;
+        await LoadEmulators();
+    }
+
+    private async Task DeleteBinary(int id)
+    {
+        var entity = await Db.EmulatorBinaries.FindAsync(id);
+        if (entity is not null) { Db.EmulatorBinaries.Remove(entity); await Db.SaveChangesAsync(); }
+        await LoadEmulators();
+    }
+
+    private static string FormatSize(long bytes) => bytes switch
+    {
+        >= 1_000_000_000 => $"{bytes / 1_000_000_000.0:F1} GB",
+        >= 1_000_000 => $"{bytes / 1_000_000.0:F1} MB",
+        >= 1_000 => $"{bytes / 1_000.0:F1} KB",
+        _ => $"{bytes} B"
+    };
+}

@@ -1,0 +1,36 @@
+@page "/admin"
+@inject NavigationManager Nav
+
+<PageTitle>Keeper's Gate - Grimoire</PageTitle>
+
+<div class="admin-login">
+    <h2>Keeper's Gate</h2>
+    <p class="text-secondary">Enter the admin key to access the keeper's chambers.</p>
+
+    @if (hasError)
+    {
+        <div class="admin-error">Invalid key. The wards hold firm.</div>
+    }
+
+    <form method="post" action="/api/admin/login" class="admin-form">
+        <div class="form-group">
+            <label>Admin Key</label>
+            <input type="password" name="key" class="form-control" placeholder="Enter the secret key..." autofocus />
+        </div>
+        <input type="hidden" name="returnUrl" value="@returnUrl" />
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Enter</button>
+        </div>
+    </form>
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    public string? Error { get; set; }
+
+    [SupplyParameterFromQuery]
+    public string? ReturnUrl { get; set; }
+
+    private bool hasError => Error == "invalid";
+    private string returnUrl => ReturnUrl ?? "/admin/games";
+}
