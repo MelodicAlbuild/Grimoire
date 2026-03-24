@@ -67,7 +67,7 @@ public class MelonDSHandler : IEmulatorHandler
         return Path.Combine(Path.GetDirectoryName(emulatorBasePath)!, "saves", gameId);
     }
 
-    // DS has no DLC/update/firmware management through the emulator
+    // DS has no DLC or update management
     public Task InstallDlcAsync(string emulatorPath, string dlcFilePath, CancellationToken ct = default)
         => Task.CompletedTask;
 
@@ -76,6 +76,18 @@ public class MelonDSHandler : IEmulatorHandler
 
     public Task InstallFirmwareAsync(string emulatorPath, string firmwarePath, CancellationToken ct = default)
         => Task.CompletedTask;
+
+    /// <summary>
+    /// Installs a BIOS file (bios7.bin, bios9.bin, firmware.bin) into the emulator directory.
+    /// Called by LaunchService when validation detects missing BIOS files.
+    /// </summary>
+    public Task InstallBiosAsync(string emulatorPath, string biosFilePath, CancellationToken ct = default)
+    {
+        var baseDir = Path.GetDirectoryName(emulatorPath)!;
+        var destPath = Path.Combine(baseDir, Path.GetFileName(biosFilePath));
+        File.Copy(biosFilePath, destPath, overwrite: true);
+        return Task.CompletedTask;
+    }
 
     public Task ValidateRequirementsAsync(string emulatorPath, CancellationToken ct = default)
     {

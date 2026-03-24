@@ -121,16 +121,22 @@ public class LaunchService : ILaunchService
                 await _db.SaveChangesAsync(ct);
             }
 
-            // 4. Validate requirements
+            // 4. Validate requirements — auto-download if missing
             progress.Report(new LaunchProgress(LaunchStep.ValidatingRequirements, "Validating emulator requirements..."));
             try
             {
                 await handler.ValidateRequirementsAsync(emulatorPath, ct);
             }
-            catch (FileNotFoundException ex)
+            catch (FileNotFoundException)
             {
-                progress.Report(new LaunchProgress(LaunchStep.Failed, $"Missing requirement: {ex.Message}"));
-                throw;
+                // Requirements missing — try to fetch from server
+                progress.Report(new LaunchProgress(LaunchStep.ValidatingRequirements,
+                    $"Missing requirements for {handler.EmulatorName}. Downloading from server..."));
+
+                await DownloadRequirementsAsync(handler, game.Platform, emulatorPath, progress, ct);
+
+                // Re-validate after downloading
+                await handler.ValidateRequirementsAsync(emulatorPath, ct);
             }
 
             // 5. Launch
@@ -191,6 +197,65 @@ public class LaunchService : ILaunchService
 
         return emulatorPath
             ?? throw new InvalidOperationException($"Failed to locate {handler.EmulatorName} after installation.");
+    }
+
+    /// <summary>
+    /// Downloads firmware and BIOS files from the server for a given platform,
+    /// then installs them into the emulator directory.
+    /// </summary>
+    private async Task DownloadRequirementsAsync(
+        IEmulatorHandler handler, PlatformType platform, string emulatorPath,
+        IProgress<LaunchProgress> progress, CancellationToken ct)
+    {
+        var installDir = await _settings.GetInstallDirectoryAsync();
+        var tempDir = Path.Combine(installDir, "temp");
+        Directory.CreateDirectory(tempDir);
+
+        // Download and install firmware
+        var firmwareList = await _api.GetFirmwareAsync(platform, ct);
+        foreach (var fw in firmwareList)
+        {
+            progress.Report(new LaunchProgress(LaunchStep.ValidatingRequirements,
+                $"Downloading firmware v{fw.Version}..."));
+
+            var tempPath = Path.Combine(tempDir, $"firmware_{fw.Id}");
+            await using var fwStream = await _api.DownloadFirmwareAsync(fw.Id, ct);
+            await using var fwFile = new FileStream(tempPath, FileMode.Create, FileAccess.Write);
+            await fwStream.CopyToAsync(fwFile, ct);
+            fwFile.Close();
+
+            await handler.InstallFirmwareAsync(emulatorPath, tempPath, ct);
+            try { File.Delete(tempPath); } catch { }
+        }
+
+        // Download and install BIOS files
+        var biosList = await _api.GetBiosFilesAsync(platform, ct);
+        foreach (var bios in biosList)
+        {
+            progress.Report(new LaunchProgress(LaunchStep.ValidatingRequirements,
+                $"Downloading {bios.FileName}..."));
+
+            // Save with the original filename so the handler places it correctly
+            var tempPath = Path.Combine(tempDir, bios.FileName);
+            await using var biosStream = await _api.DownloadBiosAsync(bios.Id, ct);
+            await using var biosFile = new FileStream(tempPath, FileMode.Create, FileAccess.Write);
+            await biosStream.CopyToAsync(biosFile, ct);
+            biosFile.Close();
+
+            // Use handler-specific install if available, otherwise copy to emulator dir
+            if (handler is Grimoire.Emulators.Handlers.MelonDSHandler melonds)
+                await melonds.InstallBiosAsync(emulatorPath, tempPath, ct);
+            else if (handler is Grimoire.Emulators.Handlers.RyubingHandler ryubing)
+                await ryubing.InstallKeysAsync(emulatorPath, tempPath, ct);
+            else
+            {
+                // Generic: copy to emulator directory
+                var emuDir = Path.GetDirectoryName(emulatorPath)!;
+                File.Copy(tempPath, Path.Combine(emuDir, bios.FileName), overwrite: true);
+            }
+
+            try { File.Delete(tempPath); } catch { }
+        }
     }
 
     private static string GetCurrentRuntimeId()

@@ -72,25 +72,51 @@ public class RyubingHandler : IEmulatorHandler
 
     public Task InstallDlcAsync(string emulatorPath, string dlcFilePath, CancellationToken ct = default)
     {
-        // TODO: Copy DLC NSP to Ryubing's DLC directory, update metadata
-        throw new NotImplementedException("Ryubing DLC installation not yet implemented");
+        // Place DLC NSP alongside emulator for Ryubing to detect
+        var baseDir = Path.GetDirectoryName(emulatorPath)!;
+        var dlcDir = Path.Combine(baseDir, "sdcard", "dlc");
+        Directory.CreateDirectory(dlcDir);
+        File.Copy(dlcFilePath, Path.Combine(dlcDir, Path.GetFileName(dlcFilePath)), overwrite: true);
+        return Task.CompletedTask;
     }
 
     public Task InstallUpdateAsync(string emulatorPath, string updateFilePath, CancellationToken ct = default)
     {
-        // TODO: Install game update via Ryubing's update mechanism
-        throw new NotImplementedException("Ryubing update installation not yet implemented");
+        var baseDir = Path.GetDirectoryName(emulatorPath)!;
+        var updateDir = Path.Combine(baseDir, "sdcard", "updates");
+        Directory.CreateDirectory(updateDir);
+        File.Copy(updateFilePath, Path.Combine(updateDir, Path.GetFileName(updateFilePath)), overwrite: true);
+        return Task.CompletedTask;
     }
 
     public Task InstallFirmwareAsync(string emulatorPath, string firmwarePath, CancellationToken ct = default)
     {
-        // TODO: Extract firmware to Ryubing's firmware directory
-        throw new NotImplementedException("Ryubing firmware installation not yet implemented");
+        var baseDir = Path.GetDirectoryName(emulatorPath)!;
+        var fwDir = Path.Combine(baseDir, "bis", "system", "Contents", "registered");
+        Directory.CreateDirectory(fwDir);
+        // Firmware comes as a zip — extract it
+        if (firmwarePath.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+            System.IO.Compression.ZipFile.ExtractToDirectory(firmwarePath, fwDir, overwriteFiles: true);
+        else
+            File.Copy(firmwarePath, Path.Combine(fwDir, Path.GetFileName(firmwarePath)), overwrite: true);
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Installs a keys file (e.g., prod.keys) into the emulator's system directory.
+    /// This is called by LaunchService when validation detects missing keys.
+    /// </summary>
+    public Task InstallKeysAsync(string emulatorPath, string keysFilePath, CancellationToken ct = default)
+    {
+        var baseDir = Path.GetDirectoryName(emulatorPath)!;
+        var systemDir = Path.Combine(baseDir, "system");
+        Directory.CreateDirectory(systemDir);
+        File.Copy(keysFilePath, Path.Combine(systemDir, Path.GetFileName(keysFilePath)), overwrite: true);
+        return Task.CompletedTask;
     }
 
     public Task ValidateRequirementsAsync(string emulatorPath, CancellationToken ct = default)
     {
-        // TODO: Check for prod.keys in Ryubing's system directory
         var baseDir = Path.GetDirectoryName(emulatorPath)!;
         var keysPath = Path.Combine(baseDir, "system", "prod.keys");
         if (!File.Exists(keysPath))

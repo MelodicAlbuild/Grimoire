@@ -30,6 +30,13 @@ public interface IGrimoireApi
     Task<long> GetEmulatorDownloadSizeAsync(PlatformType platform, string runtimeId,
         CancellationToken ct = default);
 
+    // -- Firmware & BIOS --
+
+    Task<IReadOnlyList<FirmwareDto>> GetFirmwareAsync(PlatformType platform, CancellationToken ct = default);
+    Task<IReadOnlyList<BiosFileDto>> GetBiosFilesAsync(PlatformType platform, CancellationToken ct = default);
+    Task<Stream> DownloadFirmwareAsync(int id, CancellationToken ct = default);
+    Task<Stream> DownloadBiosAsync(int id, CancellationToken ct = default);
+
     // -- Platforms --
 
     Task<IReadOnlyList<PlatformInfoDto>> GetPlatformsAsync(CancellationToken ct = default);

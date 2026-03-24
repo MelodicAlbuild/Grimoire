@@ -1,0 +1,242 @@
+@page "/admin/firmware"
+@inject GrimoireDbContext Db
+@rendermode InteractiveServer
+@using Grimoire.Server.Data
+@using Grimoire.Server.Entities
+@using Microsoft.EntityFrameworkCore
+
+<PageTitle>Firmware & BIOS - Grimoire</PageTitle>
+
+<AdminGuard>
+    <h2>Firmware & BIOS Files</h2>
+
+    @* ── Firmware Section ── *@
+    <div class="admin-form">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h4 style="margin: 0;">Firmware</h4>
+            <button class="btn-sm btn-edit" @onclick="ShowFirmwareForm">Add Firmware</button>
+        </div>
+
+        @if (showFwForm)
+        {
+            <div style="background: var(--bg-inset); border-radius: 4px; padding: 1rem; margin-bottom: 1rem;">
+                <div class="form-group">
+                    <label>Platform</label>
+                    <select class="form-control" @bind="fwPlatform">
+                        @foreach (var p in Enum.GetValues<PlatformType>())
+                        {
+                            <option value="@p">@p</option>
+                        }
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Version</label>
+                    <input class="form-control" @bind="fwVersion" placeholder="e.g. 19.0.1" />
+                </div>
+                <div class="form-group">
+                    <label>File Path (relative to FirmwareBasePath)</label>
+                    <input class="form-control" @bind="fwFilePath" placeholder="e.g. switch/Firmware_19.0.1.zip" />
+                </div>
+                <div class="form-actions">
+                    <button class="btn btn-primary" @onclick="SaveFirmware">Save</button>
+                    <button class="btn btn-outline" @onclick="() => showFwForm = false">Cancel</button>
+                </div>
+            </div>
+        }
+
+        @if (firmwares.Count > 0)
+        {
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Platform</th>
+                        <th>Version</th>
+                        <th>File Path</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var fw in firmwares)
+                    {
+                        <tr>
+                            <td>@fw.Id</td>
+                            <td><PlatformBadge Platform="fw.Platform" /></td>
+                            <td>@fw.Version</td>
+                            <td style="font-size: 0.85rem;"><code>@fw.FilePath</code></td>
+                            <td><button class="btn-sm btn-delete" @onclick="() => DeleteFirmware(fw.Id)">Remove</button></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <p class="text-secondary" style="font-style: italic; margin: 0;">No firmware entries.</p>
+        }
+    </div>
+
+    @* ── BIOS Section ── *@
+    <div class="admin-form">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h4 style="margin: 0;">BIOS Files</h4>
+            <button class="btn-sm btn-edit" @onclick="ShowBiosForm">Add BIOS File</button>
+        </div>
+
+        @if (showBiosForm)
+        {
+            <div style="background: var(--bg-inset); border-radius: 4px; padding: 1rem; margin-bottom: 1rem;">
+                <div class="form-group">
+                    <label>Platform</label>
+                    <select class="form-control" @bind="biosPlatform">
+                        @foreach (var p in Enum.GetValues<PlatformType>())
+                        {
+                            <option value="@p">@p</option>
+                        }
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>File Name (what the emulator expects)</label>
+                    <input class="form-control" @bind="biosFileName" placeholder="e.g. bios7.bin or prod.keys" />
+                </div>
+                <div class="form-group">
+                    <label>File Path (relative to BiosBasePath)</label>
+                    <input class="form-control" @bind="biosFilePath" placeholder="e.g. ds/bios7.bin" />
+                </div>
+                <div class="form-group">
+                    <label>Description (optional)</label>
+                    <input class="form-control" @bind="biosDescription" placeholder="e.g. ARM7 BIOS" />
+                </div>
+                <div class="form-actions">
+                    <button class="btn btn-primary" @onclick="SaveBios">Save</button>
+                    <button class="btn btn-outline" @onclick="() => showBiosForm = false">Cancel</button>
+                </div>
+            </div>
+        }
+
+        @if (biosFiles.Count > 0)
+        {
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Platform</th>
+                        <th>File Name</th>
+                        <th>File Path</th>
+                        <th>Description</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var b in biosFiles)
+                    {
+                        <tr>
+                            <td>@b.Id</td>
+                            <td><PlatformBadge Platform="b.Platform" /></td>
+                            <td><code>@b.FileName</code></td>
+                            <td style="font-size: 0.85rem;"><code>@b.FilePath</code></td>
+                            <td>@(b.Description ?? "-")</td>
+                            <td><button class="btn-sm btn-delete" @onclick="() => DeleteBios(b.Id)">Remove</button></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <p class="text-secondary" style="font-style: italic; margin: 0;">No BIOS file entries.</p>
+        }
+    </div>
+
+    <div class="admin-form">
+        <h4>Required Files by Platform</h4>
+        <div class="content-list">
+            <div class="content-item">
+                <span class="content-title">Nintendo Switch (Ryubing)</span>
+                <code class="content-size">prod.keys</code>
+            </div>
+            <div class="content-item">
+                <span class="content-title">Nintendo Switch (Ryubing)</span>
+                <code class="content-size">Firmware ZIP (optional)</code>
+            </div>
+            <div class="content-item">
+                <span class="content-title">Nintendo DS (melonDS)</span>
+                <code class="content-size">bios7.bin, bios9.bin, firmware.bin</code>
+            </div>
+            <div class="content-item">
+                <span class="content-title">Nintendo 3DS (Citra)</span>
+                <span class="content-size">None required</span>
+            </div>
+            <div class="content-item">
+                <span class="content-title">Game Boy (mGBA)</span>
+                <span class="content-size">None required (built-in BIOS)</span>
+            </div>
+        </div>
+    </div>
+</AdminGuard>
+
+@code {
+    private List<FirmwareEntity> firmwares = [];
+    private List<BiosEntity> biosFiles = [];
+
+    // Firmware form
+    private bool showFwForm;
+    private PlatformType fwPlatform = PlatformType.NintendoSwitch;
+    private string fwVersion = "";
+    private string fwFilePath = "";
+
+    // BIOS form
+    private bool showBiosForm;
+    private PlatformType biosPlatform = PlatformType.NintendoDS;
+    private string biosFileName = "";
+    private string biosFilePath = "";
+    private string? biosDescription;
+
+    protected override async Task OnInitializedAsync() => await LoadData();
+
+    private async Task LoadData()
+    {
+        firmwares = await Db.Firmwares.OrderBy(f => f.Platform).ThenBy(f => f.Version).ToListAsync();
+        biosFiles = await Db.BiosFiles.OrderBy(b => b.Platform).ThenBy(b => b.FileName).ToListAsync();
+    }
+
+    private void ShowFirmwareForm()
+    {
+        fwPlatform = PlatformType.NintendoSwitch; fwVersion = ""; fwFilePath = ""; showFwForm = true;
+    }
+
+    private void ShowBiosForm()
+    {
+        biosPlatform = PlatformType.NintendoDS; biosFileName = ""; biosFilePath = ""; biosDescription = null; showBiosForm = true;
+    }
+
+    private async Task SaveFirmware()
+    {
+        Db.Firmwares.Add(new FirmwareEntity { Platform = fwPlatform, Version = fwVersion, FilePath = fwFilePath });
+        await Db.SaveChangesAsync();
+        showFwForm = false;
+        await LoadData();
+    }
+
+    private async Task SaveBios()
+    {
+        Db.BiosFiles.Add(new BiosEntity { Platform = biosPlatform, FileName = biosFileName, FilePath = biosFilePath, Description = biosDescription });
+        await Db.SaveChangesAsync();
+        showBiosForm = false;
+        await LoadData();
+    }
+
+    private async Task DeleteFirmware(int id)
+    {
+        var e = await Db.Firmwares.FindAsync(id);
+        if (e is not null) { Db.Firmwares.Remove(e); await Db.SaveChangesAsync(); }
+        await LoadData();
+    }
+
+    private async Task DeleteBios(int id)
+    {
+        var e = await Db.BiosFiles.FindAsync(id);
+        if (e is not null) { Db.BiosFiles.Remove(e); await Db.SaveChangesAsync(); }
+        await LoadData();
+    }
+}

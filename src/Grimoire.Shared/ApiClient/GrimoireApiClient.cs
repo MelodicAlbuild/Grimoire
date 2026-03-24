@@ -59,6 +59,36 @@ public class GrimoireApiClient : IGrimoireApi
         return response.Content.Headers.ContentLength ?? 0;
     }
 
+    public async Task<IReadOnlyList<FirmwareDto>> GetFirmwareAsync(
+        PlatformType platform, CancellationToken ct = default)
+    {
+        return await _http.GetFromJsonAsync<IReadOnlyList<FirmwareDto>>($"/api/firmware/{platform}", ct) ?? [];
+    }
+
+    public async Task<IReadOnlyList<BiosFileDto>> GetBiosFilesAsync(
+        PlatformType platform, CancellationToken ct = default)
+    {
+        return await _http.GetFromJsonAsync<IReadOnlyList<BiosFileDto>>($"/api/bios/{platform}", ct) ?? [];
+    }
+
+    public async Task<Stream> DownloadFirmwareAsync(int id, CancellationToken ct = default)
+    {
+        var response = await _http.SendAsync(
+            new HttpRequestMessage(HttpMethod.Get, $"/api/downloads/Firmware/{id}"),
+            HttpCompletionOption.ResponseHeadersRead, ct);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadAsStreamAsync(ct);
+    }
+
+    public async Task<Stream> DownloadBiosAsync(int id, CancellationToken ct = default)
+    {
+        var response = await _http.SendAsync(
+            new HttpRequestMessage(HttpMethod.Get, $"/api/downloads/Bios/{id}"),
+            HttpCompletionOption.ResponseHeadersRead, ct);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadAsStreamAsync(ct);
+    }
+
     public async Task<IReadOnlyList<PlatformInfoDto>> GetPlatformsAsync(CancellationToken ct = default)
     {
         return await _http.GetFromJsonAsync<IReadOnlyList<PlatformInfoDto>>("/api/platforms", ct) ?? [];
