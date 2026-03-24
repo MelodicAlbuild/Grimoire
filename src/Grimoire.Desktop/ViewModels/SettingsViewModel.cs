@@ -1,3 +1,5 @@
+using Avalonia.Controls;
+using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Grimoire.Desktop.Services;
@@ -35,5 +37,26 @@ public partial class SettingsViewModel : ViewModelBase
         await _settings.SetServerUrlAsync(ServerUrl);
         await _settings.SetAsync(SettingsService.InstallDirectoryKey, InstallDirectory);
         StatusMessage = "Settings saved.";
+    }
+
+    [RelayCommand]
+    private async Task BrowseInstallDirectory()
+    {
+        var topLevel = TopLevel.GetTopLevel(App.Services.GetService(typeof(Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)) is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            ? desktop.MainWindow
+            : null);
+
+        if (topLevel is null) return;
+
+        var folders = await topLevel.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        {
+            Title = "Select Install Directory",
+            AllowMultiple = false
+        });
+
+        if (folders.Count > 0)
+        {
+            InstallDirectory = folders[0].Path.LocalPath;
+        }
     }
 }

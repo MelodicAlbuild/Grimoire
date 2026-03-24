@@ -15,7 +15,12 @@
 
             <StackPanel Spacing="4">
                 <TextBlock Text="Install Directory" Foreground="#9898a8" FontSize="13" />
-                <TextBox Text="{Binding InstallDirectory}" Classes="search-input" />
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" Content="Browse..."
+                            Command="{Binding BrowseInstallDirectoryCommand}"
+                            Classes="outline-btn" Margin="8,0,0,0" VerticalAlignment="Center" />
+                    <TextBox Text="{Binding InstallDirectory}" Classes="search-input" />
+                </DockPanel>
             </StackPanel>
 
             <Button Content="Save Settings" Command="{Binding SaveSettingsCommand}" Classes="accent-btn" />

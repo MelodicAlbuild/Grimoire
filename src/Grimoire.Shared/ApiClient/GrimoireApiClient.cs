@@ -1,4 +1,6 @@
 using System.Net.Http.Json;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Grimoire.Shared.DTOs;
 using Grimoire.Shared.Enums;
 using Grimoire.Shared.Interfaces;
@@ -8,6 +10,11 @@ namespace Grimoire.Shared.ApiClient;
 public class GrimoireApiClient : IGrimoireApi
 {
     private readonly HttpClient _http;
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        Converters = { new JsonStringEnumConverter() }
+    };
 
     public GrimoireApiClient(HttpClient http)
     {
@@ -22,22 +29,22 @@ public class GrimoireApiClient : IGrimoireApi
         if (!string.IsNullOrWhiteSpace(search)) query.Add($"search={Uri.EscapeDataString(search)}");
 
         var url = query.Count > 0 ? $"/api/games?{string.Join('&', query)}" : "/api/games";
-        return await _http.GetFromJsonAsync<IReadOnlyList<GameListDto>>(url, ct) ?? [];
+        return await _http.GetFromJsonAsync<IReadOnlyList<GameListDto>>(url, JsonOptions, ct) ?? [];
     }
 
     public async Task<GameDetailDto?> GetGameDetailAsync(int gameId, CancellationToken ct = default)
     {
-        return await _http.GetFromJsonAsync<GameDetailDto>($"/api/games/{gameId}", ct);
+        return await _http.GetFromJsonAsync<GameDetailDto>($"/api/games/{gameId}", JsonOptions, ct);
     }
 
     public async Task<IReadOnlyList<EmulatorDto>> GetEmulatorsAsync(CancellationToken ct = default)
     {
-        return await _http.GetFromJsonAsync<IReadOnlyList<EmulatorDto>>("/api/emulators", ct) ?? [];
+        return await _http.GetFromJsonAsync<IReadOnlyList<EmulatorDto>>("/api/emulators", JsonOptions, ct) ?? [];
     }
 
     public async Task<EmulatorDto?> GetEmulatorAsync(PlatformType platform, CancellationToken ct = default)
     {
-        return await _http.GetFromJsonAsync<EmulatorDto>($"/api/emulators/{platform}", ct);
+        return await _http.GetFromJsonAsync<EmulatorDto>($"/api/emulators/{platform}", JsonOptions, ct);
     }
 
     public async Task<Stream> GetEmulatorDownloadStreamAsync(
@@ -62,13 +69,13 @@ public class GrimoireApiClient : IGrimoireApi
     public async Task<IReadOnlyList<FirmwareDto>> GetFirmwareAsync(
         PlatformType platform, CancellationToken ct = default)
     {
-        return await _http.GetFromJsonAsync<IReadOnlyList<FirmwareDto>>($"/api/firmware/{platform}", ct) ?? [];
+        return await _http.GetFromJsonAsync<IReadOnlyList<FirmwareDto>>($"/api/firmware/{platform}", JsonOptions, ct) ?? [];
     }
 
     public async Task<IReadOnlyList<BiosFileDto>> GetBiosFilesAsync(
         PlatformType platform, CancellationToken ct = default)
     {
-        return await _http.GetFromJsonAsync<IReadOnlyList<BiosFileDto>>($"/api/bios/{platform}", ct) ?? [];
+        return await _http.GetFromJsonAsync<IReadOnlyList<BiosFileDto>>($"/api/bios/{platform}", JsonOptions, ct) ?? [];
     }
 
     public async Task<Stream> DownloadFirmwareAsync(int id, CancellationToken ct = default)
@@ -91,7 +98,7 @@ public class GrimoireApiClient : IGrimoireApi
 
     public async Task<IReadOnlyList<PlatformInfoDto>> GetPlatformsAsync(CancellationToken ct = default)
     {
-        return await _http.GetFromJsonAsync<IReadOnlyList<PlatformInfoDto>>("/api/platforms", ct) ?? [];
+        return await _http.GetFromJsonAsync<IReadOnlyList<PlatformInfoDto>>("/api/platforms", JsonOptions, ct) ?? [];
     }
 
     public async Task<Stream> GetDownloadStreamAsync(
@@ -119,6 +126,6 @@ public class GrimoireApiClient : IGrimoireApi
 
     public async Task<ClientVersionDto?> GetLatestClientVersionAsync(CancellationToken ct = default)
     {
-        return await _http.GetFromJsonAsync<ClientVersionDto>("/api/client/latest", ct);
+        return await _http.GetFromJsonAsync<ClientVersionDto>("/api/client/latest", JsonOptions, ct);
     }
 }
